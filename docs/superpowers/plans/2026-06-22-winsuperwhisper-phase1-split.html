@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WinSuperWhisper Phase 1 - Build Split</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  .wsw-wrap { max-width: 1100px; }
+  .wsw-layer { border-left: 4px solid var(--color-primary); }
+  .wsw-podman { color: #34d399; border-color: #34d39955; background: #34d39912; }
+  .wsw-win { color: #60a5fa; border-color: #60a5fa55; background: #60a5fa12; }
+  .wsw-rule {
+    background: repeating-linear-gradient(90deg, var(--color-base-300) 0 8px, transparent 8px 16px);
+    height: 2px;
+  }
+  .wsw-roof {
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  }
+</style>
+</head>
+<body class="bg-base-200 text-base-content">
+<div class="wsw-wrap mx-auto px-5 py-8">
+
+  <!-- Header -->
+  <header class="mb-7">
+    <div class="text-xs uppercase tracking-[0.2em] text-primary/80 mb-1">WinSuperWhisper &middot; Phase 1 (Core MVP)</div>
+    <h1 class="text-3xl font-bold leading-tight">Don't build it as one slab. Build it like a house.</h1>
+    <p class="text-base-content/70 mt-2 max-w-3xl">
+      Six logical pieces, laid in dependency order from foundation to move-in. Each piece has <span class="text-base-content">its own failing-test-first cycle</span>
+      and <span class="text-base-content">its own verification command</span>, so we never execute the whole plan blind. Color tells you where each piece is proven.
+    </p>
+    <div class="flex flex-wrap gap-3 mt-4 text-sm">
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border wsw-podman font-medium">&#9632; Podman-verifiable here (Linux)</span>
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border wsw-win font-medium">&#9632; Needs the Win11 machine (powershell.exe from WSL)</span>
+    </div>
+  </header>
+
+  <!-- House cross-section: roof at top (last built), foundation at bottom (first built) -->
+  <div class="grid grid-cols-1 gap-3">
+
+    <!-- ROOF: Move-in -->
+    <div class="flex flex-col items-center">
+      <div class="wsw-roof bg-primary/15 border border-primary/30 w-2/3 h-10 flex items-end justify-center">
+        <span class="text-[11px] uppercase tracking-widest text-primary/80 mb-1">roof &middot; built last</span>
+      </div>
+    </div>
+
+    <!-- Layer 5 -->
+    <section class="card bg-base-100 shadow-sm wsw-layer">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <div class="text-xs text-base-content/50 font-mono">STEP 5 &middot; commissioning</div>
+            <h2 class="text-xl font-semibold">Move-in &mdash; App composition + daemon lifecycle + end-to-end</h2>
+          </div>
+          <span class="px-3 py-1 rounded-full border wsw-win text-xs font-semibold shrink-0">WIN11</span>
+        </div>
+        <p class="text-base-content/70 text-sm">Wire the adapters + UI + orchestrator together in <code>App.xaml</code>; bring up the startup data flow; full hold-to-record &rarr; type loop.</p>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="badge badge-ghost">App.xaml DI wiring</span>
+          <span class="badge badge-ghost">Startup: load config &rarr; launch daemon &rarr; connect &rarr; READY-gated hotkey</span>
+          <span class="badge badge-ghost">Full e2e: speak &rarr; transcript typed</span>
+        </div>
+        <div role="alert" class="alert alert-warning alert-soft py-2 px-3 text-sm mt-1">
+          <span>&#9888; <b>wsl.exe launch must be async / non-blocking.</b> The daemon is a persistent server &mdash; use <code>UseShellExecute=false</code>, never wait for exit, keep it off the UI thread, or WPF hangs on launch.</span>
+        </div>
+        <div class="text-xs font-mono text-base-content/60 mt-1">verify &rarr; scripts/run-tests.sh (Windows tier) + manual smoke on real focus targets</div>
+      </div>
+    </section>
+
+    <!-- Layer 4 -->
+    <section class="card bg-base-100 shadow-sm wsw-layer">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <div class="text-xs text-base-content/50 font-mono">STEP 4 &middot; interior</div>
+            <h2 class="text-xl font-semibold">Rooms &mdash; WPF UI</h2>
+          </div>
+          <span class="px-3 py-1 rounded-full border wsw-win text-xs font-semibold shrink-0">WIN11</span>
+        </div>
+        <p class="text-base-content/70 text-sm">The surfaces the user sees. Pure presentation bound to Core view-state; no Win32 logic lives here.</p>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="badge badge-ghost">Recording overlay: red square + 20-bar waveform</span>
+          <span class="badge badge-ghost">DPI-aware positioning (GetDpiForMonitor)</span>
+          <span class="badge badge-ghost">Settings window: monitor / hotkey / distro / model-folder</span>
+          <span class="badge badge-ghost">Tray icon: warming-up &rarr; idle</span>
+        </div>
+        <div class="text-xs font-mono text-base-content/60 mt-1">verify &rarr; .App.Tests UI smoke (overlay appears, positions, dismisses) on Win11</div>
+      </div>
+    </section>
+
+    <!-- Layer 3 -->
+    <section class="card bg-base-100 shadow-sm wsw-layer">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <div class="text-xs text-base-content/50 font-mono">STEP 3 &middot; wiring &amp; fixtures</div>
+            <h2 class="text-xl font-semibold">Wiring &mdash; Win32 + NAudio adapters</h2>
+          </div>
+          <span class="px-3 py-1 rounded-full border wsw-win text-xs font-semibold shrink-0">WIN11</span>
+        </div>
+        <p class="text-base-content/70 text-sm">The real implementations of Core's 5 interfaces. The only code that genuinely needs Windows to run.</p>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="badge badge-ghost">IHotkeyService &rarr; RegisterHotKey</span>
+          <span class="badge badge-ghost">IAudioCapture &rarr; NAudio 16kHz mono</span>
+          <span class="badge badge-ghost">ITextInjector &rarr; SendInput</span>
+          <span class="badge badge-ghost">IMonitorService &rarr; monitor + DPI</span>
+        </div>
+        <div role="alert" class="alert alert-info alert-soft py-2 px-3 text-sm mt-1">
+          <span>UIPI: detect <code>SendInput</code> returning <b>0</b> &rarr; fall through to clipboard + Ctrl+V. <b>Do not auto-elevate.</b></span>
+        </div>
+        <div class="text-xs font-mono text-base-content/60 mt-1">verify &rarr; .App.Tests Win32 adapter tests on Win11</div>
+      </div>
+    </section>
+
+    <!-- Floor divider: the compiler boundary -->
+    <div class="flex items-center gap-3 my-1">
+      <div class="wsw-rule flex-1"></div>
+      <span class="text-[11px] uppercase tracking-widest text-base-content/50 font-semibold">the compiler-enforced boundary &middot; everything below compiles &amp; tests on Linux</span>
+      <div class="wsw-rule flex-1"></div>
+    </div>
+
+    <!-- Layer 2 (two parallel pieces) -->
+    <div class="grid md:grid-cols-2 gap-3">
+      <section class="card bg-base-100 shadow-sm wsw-layer">
+        <div class="card-body p-5 gap-2">
+          <div class="flex items-start justify-between gap-3 flex-wrap">
+            <div class="min-w-0">
+              <div class="text-xs text-base-content/50 font-mono">STEP 2a &middot; framing</div>
+              <h2 class="text-lg font-semibold">Skeleton &mdash; WinSuperWhisper.Core</h2>
+            </div>
+            <span class="px-3 py-1 rounded-full border wsw-podman text-xs font-semibold shrink-0">PODMAN</span>
+          </div>
+          <p class="text-base-content/70 text-sm"><code>net8.0</code>, no WPF, no NAudio. The load-bearing logic.</p>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="badge badge-ghost">5 interfaces</span>
+            <span class="badge badge-ghost">AppConfig models</span>
+            <span class="badge badge-ghost">WAV encoder (PCM &rarr; bytes)</span>
+            <span class="badge badge-ghost">Daemon IPC client: handshake gate / req-resp / reconnect / EXIT</span>
+            <span class="badge badge-ghost">Orchestrator (all mocked)</span>
+          </div>
+          <div class="text-xs font-mono text-base-content/60 mt-1">verify &rarr; .Tests xUnit in Podman</div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow-sm wsw-layer">
+        <div class="card-body p-5 gap-2">
+          <div class="flex items-start justify-between gap-3 flex-wrap">
+            <div class="min-w-0">
+              <div class="text-xs text-base-content/50 font-mono">STEP 2b &middot; plumbing</div>
+              <h2 class="text-lg font-semibold">Utilities &mdash; Python whisper daemon</h2>
+            </div>
+            <span class="px-3 py-1 rounded-full border wsw-podman text-xs font-semibold shrink-0">PODMAN</span>
+          </div>
+          <p class="text-base-content/70 text-sm">Standalone server in <code>wsl/</code>. Fully buildable + testable here, independent of all C#.</p>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="badge badge-ghost">TCP 0.0.0.0:8765</span>
+            <span class="badge badge-ghost">READY handshake</span>
+            <span class="badge badge-ghost">WAV &rarr; numpy via stdlib wave</span>
+            <span class="badge badge-ghost">faster-whisper (model = dir)</span>
+            <span class="badge badge-ghost">[EXIT] + drop self-terminate</span>
+          </div>
+          <div class="text-xs font-mono text-base-content/60 mt-1">verify &rarr; wsl/tests pytest in Podman</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Layer 1: foundation -->
+    <section class="card bg-base-100 shadow-md border border-primary/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <div class="text-xs text-primary/70 font-mono">STEP 1 &middot; foundation &amp; plot</div>
+            <h2 class="text-xl font-semibold">Slab &mdash; repo scaffold + two-project split + test harness</h2>
+          </div>
+          <span class="px-3 py-1 rounded-full border wsw-podman text-xs font-semibold shrink-0">PODMAN</span>
+        </div>
+        <p class="text-base-content/70 text-sm">
+          The standalone repo (<b>not</b> inside firstmate). The split itself is the foundation: <code>Core (net8.0)</code> vs <code>App (net8.0-windows)</code>.
+          The compiler is the guardrail &mdash; a WPF or NAudio leak into Core breaks the Linux build instantly.
+        </p>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="badge badge-outline">Solution + 4 projects</span>
+          <span class="badge badge-outline">scripts/run-tests.sh (Podman tier &rarr; powershell.exe tier, no human)</span>
+          <span class="badge badge-outline">CI-green empty test pass</span>
+        </div>
+        <div class="text-xs font-mono text-base-content/60 mt-1">verify &rarr; dotnet build (Core compiles on Linux) + run-tests.sh skeleton green</div>
+      </div>
+    </section>
+
+    <!-- ground line -->
+    <div class="flex items-center gap-2 mt-1 opacity-60">
+      <div class="h-1.5 flex-1 rounded bg-base-300"></div>
+      <span class="text-[11px] uppercase tracking-widest text-base-content/50">ground</span>
+      <div class="h-1.5 flex-1 rounded bg-base-300"></div>
+    </div>
+  </div>
+
+  <!-- Build order rail -->
+  <section class="mt-8">
+    <h3 class="text-sm uppercase tracking-widest text-base-content/60 mb-3">Critical path &amp; what runs in parallel</h3>
+    <div class="card bg-base-100 shadow-sm">
+      <div class="card-body p-5 text-sm gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="badge badge-primary badge-lg">1 Foundation</span>
+          <span class="text-base-content/40">&rarr;</span>
+          <span class="inline-flex flex-col gap-1">
+            <span class="badge badge-success badge-lg">2a Core</span>
+            <span class="badge badge-success badge-lg">2b Daemon</span>
+          </span>
+          <span class="text-base-content/40">&rarr;</span>
+          <span class="badge badge-info badge-lg">3 Adapters</span>
+          <span class="text-base-content/40">&rarr;</span>
+          <span class="badge badge-info badge-lg">4 UI</span>
+          <span class="text-base-content/40">&rarr;</span>
+          <span class="badge badge-info badge-lg">5 Move-in (e2e)</span>
+        </div>
+        <ul class="list-disc pl-5 text-base-content/70 space-y-1">
+          <li><b>Steps 2a &amp; 2b run in parallel</b> &mdash; both rest only on the foundation, and the daemon shares no code with the C# side. We can prove both here in Podman before touching Windows.</li>
+          <li><b>Steps 3&ndash;5 are the Windows half</b> &mdash; adapters implement Core's interfaces, UI binds to Core view-state, move-in wires it all and runs the real loop.</li>
+          <li><b>Everything below the dashed line is proven on this machine</b> before anyone touches the Win11 box &mdash; that's the whole point of the project split.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Governance: keeping each agent in shape and in step -->
+  <section class="mt-8">
+    <h3 class="text-sm uppercase tracking-widest text-base-content/60 mb-1">Keeping each agent in shape &amp; in step</h3>
+    <p class="text-base-content/70 text-sm mb-3 max-w-3xl">An agent drifts when "done" is a judgment call. Phase 1 removes the judgment call: every step has a
+      <span class="text-base-content">machine-checkable definition of done</span> and a <span class="text-base-content">single source of truth</span> it isn't allowed to rewrite.</p>
+    <div class="grid md:grid-cols-3 gap-3">
+
+      <div class="card bg-base-100 shadow-sm border-l-4 border-success">
+        <div class="card-body p-4 gap-1">
+          <div class="text-xs font-mono text-success/80">guardrail 1</div>
+          <h4 class="font-semibold">Test-first, red &rarr; green</h4>
+          <p class="text-sm text-base-content/70">Failing test is written before the code. The success criterion is objective: that test now passes, nothing else regresses. No "looks done."</p>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm border-l-4 border-success">
+        <div class="card-body p-4 gap-1">
+          <div class="text-xs font-mono text-success/80">guardrail 2</div>
+          <h4 class="font-semibold">One gate: run-tests.sh green</h4>
+          <p class="text-sm text-base-content/70">No step is "done" until the suite is green. The agent can't self-certify &mdash; the harness agrees or it doesn't. Each piece is its own PR over that gate.</p>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm border-l-4 border-info">
+        <div class="card-body p-4 gap-1">
+          <div class="text-xs font-mono text-info/80">guardrail 3</div>
+          <h4 class="font-semibold">The compiler is a standing referee</h4>
+          <p class="text-sm text-base-content/70">The Core/App split means Windows code <em>cannot</em> be smuggled into the Linux-tested layer &mdash; it won't compile. Drift is caught at build time, not review time.</p>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm border-l-4 border-info">
+        <div class="card-body p-4 gap-1">
+          <div class="text-xs font-mono text-info/80">guardrail 4</div>
+          <h4 class="font-semibold">Bounded sessions, explicit checkpoints</h4>
+          <p class="text-sm text-base-content/70">work &rarr; test &rarr; verify &rarr; checkpoint &rarr; stop. At each stop the agent states what's done, verified, and left &mdash; and never continues from a state it can't describe back.</p>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm border-l-4 border-primary">
+        <div class="card-body p-4 gap-1">
+          <div class="text-xs font-mono text-primary/80">guardrail 5</div>
+          <h4 class="font-semibold">The spec is fixed; the plan only decomposes</h4>
+          <p class="text-sm text-base-content/70">Each plan cites the spec by absolute path and treats it as authoritative. Plans break work down &mdash; they never redesign &mdash; so all four phases stay mutually consistent.</p>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-sm border-l-4 border-primary">
+        <div class="card-body p-4 gap-1">
+          <div class="text-xs font-mono text-primary/80">guardrail 6</div>
+          <h4 class="font-semibold">Interfaces are the contract between phases</h4>
+          <p class="text-sm text-base-content/70">Phase 1 defines all 5 interfaces. Later phases extend behind them and build on Phase 1's green state &mdash; the contract is what keeps plan N+1 in step with plan N.</p>
+        </div>
+      </div>
+
+    </div>
+    <div role="alert" class="alert alert-success alert-soft py-2 px-3 text-sm mt-3">
+      <span>Net effect: a step is either provably green against the spec's contract, or it isn't &mdash; the agent has nowhere to drift to.</span>
+    </div>
+  </section>
+
+  <!-- Explicit exit conditions + escalation -->
+  <section class="mt-8">
+    <h3 class="text-sm uppercase tracking-widest text-base-content/60 mb-1">Exit conditions &amp; the escalation rule</h3>
+    <p class="text-base-content/70 text-sm mb-3 max-w-3xl">Each step has <span class="text-base-content">binary exit conditions</span> &mdash; all must be green, partial is not done.
+      The instant a condition can't be met, the agent <span class="text-base-content">stops and elevates to you</span>. It does not weaken a test, guess a spec detail, or work around the gate.</p>
+
+    <!-- The hard rule -->
+    <div role="alert" class="alert alert-error alert-soft py-3 px-4 text-sm mb-4">
+      <span><b>Escalate-now triggers (no retry-loop, surface immediately):</b> a spec detail is ambiguous (wire format, frame layout, model strategy) &middot; an exit condition still red after <b>2 attempts</b> &middot; anything needing a credential, the Win11 machine, or a decision &middot; any temptation to relax a test to make it pass. Bounded retry is only for mechanical failures (flaky build, transient I/O); judgment calls go to you on attempt&nbsp;one.</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="table table-sm bg-base-100">
+        <thead>
+          <tr class="text-xs uppercase tracking-wider">
+            <th class="w-px">Step</th>
+            <th>Exit conditions (all must be green)</th>
+            <th class="w-2/5">Escalate immediately if</th>
+          </tr>
+        </thead>
+        <tbody class="align-top">
+          <tr>
+            <td><span class="badge badge-primary badge-sm">1</span><div class="text-xs text-base-content/50 mt-1">Foundation</div></td>
+            <td class="text-sm">
+              &bull; <code>dotnet build</code> of <b>Core</b> succeeds on Linux<br>
+              &bull; 4 projects, correct TFMs (<code>net8.0</code> / <code>net8.0-windows</code>)<br>
+              &bull; <code>run-tests.sh</code> exits 0, reaches <b>both</b> tiers (Podman + powershell.exe)
+            </td>
+            <td class="text-sm text-error/90">Core resolves any WPF/NAudio assembly &middot; <code>run-tests.sh</code> can't reach the Windows tier from WSL</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-success badge-sm">2a</span><div class="text-xs text-base-content/50 mt-1">Core</div></td>
+            <td class="text-sm">
+              &bull; All 5 interfaces compile<br>
+              &bull; xUnit green in Podman: WAV encoder, config, orchestrator<br>
+              &bull; IPC-client tests cover READY gate, req/resp, reconnect, <code>[EXIT]</code>
+            </td>
+            <td class="text-sm text-error/90">Any wire-format / frame-layout detail underspecified &mdash; don't guess the protocol</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-success badge-sm">2b</span><div class="text-xs text-base-content/50 mt-1">Daemon</div></td>
+            <td class="text-sm">
+              &bull; pytest green in Podman: protocol, READY, <code>[EXIT]</code>+drop<br>
+              &bull; WAV&rarr;numpy via stdlib <code>wave</code> verified on a fixture<br>
+              &bull; Known WAV round-trips to a deterministic transcript
+            </td>
+            <td class="text-sm text-error/90">faster-whisper model won't load in the container / wants GPU &mdash; model strategy is your call</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-info badge-sm">3</span><div class="text-xs text-base-content/50 mt-1">Adapters</div></td>
+            <td class="text-sm">
+              &bull; <code>.App.Tests</code> Win32 adapter tests green on Win11<br>
+              &bull; SendInput-0 &rarr; clipboard fallback proven with a forced 0-return<br>
+              &bull; Mic capture yields 16kHz mono PCM
+            </td>
+            <td class="text-sm text-error/90">A Win32 behavior can't be tested deterministically &middot; verifying UIPI would require elevation</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-info badge-sm">4</span><div class="text-xs text-base-content/50 mt-1">UI</div></td>
+            <td class="text-sm">
+              &bull; UI smoke green on Win11: overlay appears, positions, dismisses<br>
+              &bull; 48px-above-taskbar gap correct at 100 / 125 / 150% DPI<br>
+              &bull; Settings persists to <code>%APPDATA%</code>
+            </td>
+            <td class="text-sm text-error/90">DPI math can't hit the target on a real multi-monitor setup</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-info badge-sm">5</span><div class="text-xs text-base-content/50 mt-1">Move-in</div></td>
+            <td class="text-sm">
+              &bull; Full e2e on Win11: hold &rarr; speak &rarr; transcript typed into a real window<br>
+              &bull; Daemon launches <b>async</b> (no UI hang); READY gates the hotkey<br>
+              &bull; <code>[EXIT]</code> on close leaves <b>no</b> zombie WSL process
+            </td>
+            <td class="text-sm text-error/90">Daemon launch hangs the UI &middot; zombie process survives exit &middot; focus-restore unreliable (defer to Phase 4, don't improvise)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Commit cadence & durability -->
+  <section class="mt-8">
+    <h3 class="text-sm uppercase tracking-widest text-base-content/60 mb-1">Commit cadence &amp; how robust it is</h3>
+    <p class="text-base-content/70 text-sm mb-4 max-w-3xl">The commit boundary is the <span class="text-base-content">green checkpoint</span>, not the clock. We commit at every green and
+      <span class="text-base-content">never commit a red tree</span> &mdash; so every commit on the branch is a working state you can revert to or bisect from.</p>
+
+    <!-- the loop -->
+    <div class="card bg-base-100 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <div class="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <span class="badge badge-error badge-lg">write failing test</span>
+          <span class="text-base-content/40">&rarr;</span>
+          <span class="badge badge-warning badge-lg">implement</span>
+          <span class="text-base-content/40">&rarr;</span>
+          <span class="badge badge-success badge-lg">run-tests.sh green</span>
+          <span class="text-base-content/40">&rarr;</span>
+          <span class="badge badge-primary badge-lg">commit</span>
+          <span class="text-base-content/40">&#8635; repeat per unit</span>
+          <span class="text-base-content/40 mx-1">&rArr;</span>
+          <span class="badge badge-neutral badge-lg">step done = 1 PR</span>
+        </div>
+        <p class="text-sm text-base-content/60 mt-3">One commit per <b>unit</b> &mdash; an interface + its test, a protocol frame + its test, the WAV encoder + its test. That's ~4&ndash;8 small, conventional-message commits per step. Push after each so nothing lives only in the agent's local tree. Each step (1, 2a, 2b, 3, 4, 5) lands as <b>its own PR</b> over the green gate; merge waits for your explicit word.</p>
+      </div>
+    </div>
+
+    <!-- robustness -->
+    <div class="grid md:grid-cols-2 gap-3">
+      <div class="card bg-base-100 shadow-sm border-l-4 border-success">
+        <div class="card-body p-4 gap-1">
+          <h4 class="font-semibold text-sm">Every commit is a recovery point</h4>
+          <p class="text-sm text-base-content/70">If the agent dies or restarts, the branch holds every green checkpoint. Work resumes from the last known-green commit; anything past it is simply re-derived. The branch is the durable truth &mdash; the agent's memory is just a cache.</p>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow-sm border-l-4 border-success">
+        <div class="card-body p-4 gap-1">
+          <h4 class="font-semibold text-sm">Bisectable &amp; cheap to revert</h4>
+          <p class="text-sm text-base-content/70">Because no commit is broken, <code>git bisect</code> always lands on a real regression, and a bad unit reverts on its own without unwinding the whole step.</p>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow-sm border-l-4 border-info">
+        <div class="card-body p-4 gap-1">
+          <h4 class="font-semibold text-sm">The PR is the review unit</h4>
+          <p class="text-sm text-base-content/70">A step's commits roll up into one PR with a green suite behind it. You review a coherent slice, not a 60-commit dump &mdash; and nothing merges to <code>main</code> without your say-so.</p>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow-sm border-l-4 border-info">
+        <div class="card-body p-4 gap-1">
+          <h4 class="font-semibold text-sm">Robust against drift, by construction</h4>
+          <p class="text-sm text-base-content/70">A commit can only exist at green, an escalation interrupts before a bad commit, and a PR can't merge red. The history physically cannot accumulate broken or off-spec state.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="text-xs text-base-content/40 mt-6">
+    Grounded in <code>docs/superpowers/specs/2026-06-22-winsuperwhisper-design.md</code> (Architecture, Project Structure, Test Strategy, Build Phases &sect;Phase&nbsp;1).
+    Design source: Lavish-recommended Tailwind v4 + DaisyUI v5 CDN (no app design system exists yet to match).
+  </p>
+
+</div>
+</body>
+</html>
