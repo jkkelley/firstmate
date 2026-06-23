@@ -318,14 +318,24 @@ if tmux list-windows -t "$SES" -F '#{window_name}' | grep -qx "$W"; then
   exit 1
 fi
 
-tmux new-window -d -t "$SES" -n "$W" -c "$PROJ_ABS"
+# FM_KEEP_CWD tells a cooperating shell rc to skip any startup `cd` (e.g. a
+# `cd "$HOME"` in .zshrc) so the worker shell - and the nested treehouse subshell
+# that inherits it - stay in the directory we launched them in.
+tmux new-window -d -t "$SES" -n "$W" -c "$PROJ_ABS" -e FM_KEEP_CWD=1
 if [ "$KIND" != secondmate ]; then
-  tmux send-keys -t "$T" 'treehouse get' Enter
+  # cd into the project before acquiring a worktree: some shells run `cd "$HOME"`
+  # on startup (e.g. in .zshrc), which would otherwise leave `treehouse get`
+  # running outside the repo. Forcing the project dir makes the launch immune to
+  # shell-rc cwd changes.
+  tmux send-keys -t "$T" "cd $(printf '%q' "$PROJ_ABS") && treehouse get" Enter
 
-  # Wait for the treehouse subshell: the pane's cwd moves from the project to the worktree.
+  # Wait for the treehouse subshell: the pane's cwd becomes a NEW git worktree
+  # distinct from the project. Require a real git worktree (not merely any cwd
+  # change) so a transient shell-startup cd to $HOME isn't mistaken for it.
   for _ in $(seq 1 60); do
     p=$(tmux display-message -p -t "$T" '#{pane_current_path}' 2>/dev/null || true)
-    if [ -n "$p" ] && [ "$p" != "$PROJ_ABS" ]; then
+    if [ -n "$p" ] && [ "$p" != "$PROJ_ABS" ] && [ "$p" != "$HOME" ] \
+       && git -C "$p" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       WT="$p"
       break
     fi
