@@ -364,13 +364,16 @@ if [ "$KIND" != secondmate ]; then
   # shell-rc cwd changes.
   tmux send-keys -t "$T" "cd $(printf '%q' "$PROJ_ABS") && treehouse get" Enter
 
-  # Wait for the treehouse subshell: the pane's cwd becomes a NEW git worktree
-  # distinct from the project. Require a real git worktree (not merely any cwd
-  # change) so a transient shell-startup cd to $HOME isn't mistaken for it.
+  # Wait for the treehouse subshell: the pane's cwd settles to a NEW directory
+  # distinct from the project (and from a transient shell-startup cd to $HOME).
+  # We do NOT require a git worktree here - the isolation guard below is the sole
+  # authority on worktree validity, and it must receive a non-git settle (a
+  # treehouse-get misfire) so it can reject it with its accurate error instead of
+  # this loop timing out. FM_KEEP_CWD plus the explicit `cd` above keep the pane
+  # in the project until treehouse's subshell moves it, so the first settle is it.
   for _ in $(seq 1 60); do
     p=$(tmux display-message -p -t "$T" '#{pane_current_path}' 2>/dev/null || true)
-    if [ -n "$p" ] && [ "$p" != "$PROJ_ABS" ] && [ "$p" != "$HOME" ] \
-       && git -C "$p" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    if [ -n "$p" ] && [ "$p" != "$PROJ_ABS" ] && [ "$p" != "$HOME" ]; then
       WT="$p"
       break
     fi
