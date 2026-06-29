@@ -23,11 +23,44 @@ fm_pid_alive() {
   kill -0 "$pid" 2>/dev/null
 }
 
+# Extract field 22 (starttime, in clock ticks since boot) from a /proc/<pid>/stat
+# line. Field 2 (comm) can contain spaces and parentheses, so strip through the
+# last ") " first, then index the space-separated remainder: index 19 of the
+# stripped tail is overall field 22. Echoes the starttime; returns non-zero when
+# the field is not a positive integer.
+fm_proc_stat_starttime() {
+  local stat_line=$1 after start
+  local -a f
+  after=${stat_line##*") "}
+  read -ra f <<<"$after"
+  start=${f[19]}
+  case "$start" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  printf '%s\n' "$start"
+}
+
 fm_pid_identity() {
-  local pid=$1 out
+  local pid=$1 out stat_line start cmd
   case "$pid" in
     ''|*[!0-9]*) return 1 ;;
   esac
+  if [ -r "/proc/$pid/stat" ]; then
+    # Linux/WSL: build the identity from /proc/<pid>/stat field 22 (starttime in
+    # clock ticks since boot). Unlike `ps -o lstart`, which prints an absolute
+    # wall-clock start time derived as boot_epoch + starttime, this jiffies value
+    # is monotonic and boot-relative, so it never drifts for an unchanged pid (on
+    # WSL2 the boot epoch drifts against the wall clock, making lstart unstable),
+    # while still distinguishing a reused pid (a reused pid has a different
+    # starttime).
+    stat_line=$(cat "/proc/$pid/stat" 2>/dev/null) || return 1
+    [ -n "$stat_line" ] || return 1
+    start=$(fm_proc_stat_starttime "$stat_line") || return 1
+    cmd=$(ps -p "$pid" -o command= 2>/dev/null | sed 's/^[[:space:]]*//')
+    printf '%s %s\n' "$start" "$cmd"
+    return 0
+  fi
+  # Darwin / no procfs: ps -o lstart is stable here (the drift is WSL-specific).
   out=$(ps -p "$pid" -o lstart= -o command= 2>/dev/null) || return 1
   [ -n "$out" ] || return 1
   printf '%s\n' "$out" | sed 's/^[[:space:]]*//'
