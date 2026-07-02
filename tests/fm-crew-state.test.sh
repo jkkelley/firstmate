@@ -73,7 +73,36 @@ case "${1:-}" in
 esac
 exit 0
 SH
-  chmod +x "$fb/no-mistakes" "$fb/tmux"
+  cat > "$fb/herdr" <<'SH'
+#!/usr/bin/env bash
+set -u
+case "${1:-}" in
+  status)
+    [ "${2:-}" = --json ] && {
+      printf '{"client":{"version":"0.7.1","protocol":14},"server":{"running":true}}\n'
+      exit 0
+    } ;;
+  server)
+    exit 0 ;;
+  pane)
+    case "${2:-}" in
+      read)
+        [ "${FM_FAKE_HERDR_MISSING:-0}" = 1 ] && exit 1
+        if [ "${FM_FAKE_HERDR_BUSY:-0}" = 1 ]; then printf 'work in progress\nesc to interrupt\n'
+        else printf 'all quiet\n> \n'; fi
+        exit 0 ;;
+    esac ;;
+  agent)
+    case "${2:-}" in
+      get)
+        [ -n "${FM_FAKE_HERDR_AGENT_STATUS:-}" ] || exit 1
+        printf '{"result":{"agent":{"agent_status":"%s"}}}\n' "$FM_FAKE_HERDR_AGENT_STATUS"
+        exit 0 ;;
+    esac ;;
+esac
+exit 0
+SH
+  chmod +x "$fb/no-mistakes" "$fb/tmux" "$fb/herdr"
   printf '%s\n' "$fb"
 }
 
@@ -109,7 +138,11 @@ reset_fakes() {
   FM_FAKE_AXI_LIST=""
   FM_FAKE_BUSY=0
   FM_FAKE_TMUX_MISSING=0
+  FM_FAKE_HERDR_BUSY=0
+  FM_FAKE_HERDR_MISSING=0
+  FM_FAKE_HERDR_AGENT_STATUS=""
   export FM_FAKE_AXI_STATUS FM_FAKE_AXI_STATUS_RUN FM_FAKE_AXI_LIST FM_FAKE_BUSY FM_FAKE_TMUX_MISSING
+  export FM_FAKE_HERDR_BUSY FM_FAKE_HERDR_MISSING FM_FAKE_HERDR_AGENT_STATUS
 }
 
 # --- run-object fixtures (TOON, as `no-mistakes axi status` emits) -----------
@@ -458,6 +491,24 @@ test_no_run_busy_pane() {
   pass "no run + busy pane reads working from the pane"
 }
 
+test_no_run_herdr_unknown_uses_backend_capture() {
+  command -v jq >/dev/null 2>&1 || { pass "herdr pane fallback skipped without jq"; return; }
+  reset_fakes
+  local d; d=$(new_case herdr-busy)
+  make_repo_on_branch "$d/wt" fm/feat-herdr
+  make_fakebin "$d" >/dev/null
+  fm_write_meta "$d/state/feat-herdr.meta" "window=default:w1:p2" "worktree=$d/wt" "kind=ship" "backend=herdr"
+  FM_FAKE_AXI_STATUS=""
+  FM_FAKE_AXI_LIST=""
+  FM_FAKE_TMUX_MISSING=1
+  FM_FAKE_HERDR_BUSY=1
+  FM_FAKE_HERDR_AGENT_STATUS=""
+  local out; out=$(run_crew_state "$d" feat-herdr)
+  assert_contains "$out" "state: working" "herdr busy pane -> working"
+  assert_contains "$out" "source: pane" "herdr busy pane -> pane source"
+  pass "herdr unknown native state falls back to backend capture busy regex"
+}
+
 # (g) no run + idle pane -> the status-log verb, as-is
 test_no_run_idle_pane_uses_log() {
   reset_fakes
@@ -530,12 +581,15 @@ test_dead_window_still_reports_active_run_step() {
 
 test_no_timeout_uses_perl_bound() {
   reset_fakes
-  local d toolbin out start elapsed
+  local d toolbin out start elapsed calls_file calls
   d=$(new_case no-timeout)
   make_repo_on_branch "$d/wt" fm/feat-timeout
   make_fakebin "$d" >/dev/null
+  calls_file="$d/no-mistakes.calls"
+  : > "$calls_file"
   cat > "$d/fakebin/no-mistakes" <<'SH'
 #!/usr/bin/env bash
+printf '%s\n' "$*" >> "${FM_FAKE_NM_CALLS:-/dev/null}"
 while :; do :; done
 SH
   chmod +x "$d/fakebin/no-mistakes"
@@ -543,11 +597,13 @@ SH
   fm_write_meta "$d/state/feat-timeout.meta" "window=fm:fm-feat-timeout" "worktree=$d/wt" "kind=ship"
   FM_FAKE_BUSY=1
   start=$SECONDS
-  out=$(PATH="$d/fakebin:$toolbin" FM_STATE_OVERRIDE="$d/state" FM_CREW_STATE_NM_TIMEOUT=1 "$CREW_STATE" feat-timeout)
+  out=$(FM_FAKE_NM_CALLS="$calls_file" PATH="$d/fakebin:$toolbin" FM_STATE_OVERRIDE="$d/state" FM_CREW_STATE_NM_TIMEOUT=1 "$CREW_STATE" feat-timeout)
   elapsed=$((SECONDS - start))
   assert_contains "$out" "state: working" "timed-out no-mistakes falls back to pane"
   assert_contains "$out" "source: pane" "timed-out no-mistakes -> pane source"
   [ "$elapsed" -lt 5 ] || fail "perl timeout did not bound no-mistakes calls (elapsed ${elapsed}s)"
+  calls=$(awk 'END { print NR + 0 }' "$calls_file" 2>/dev/null || echo 0)
+  [ "$calls" -eq 1 ] || fail "empty no-mistakes status triggered extra lookups ($calls calls)"
   pass "no timeout command uses perl bound"
 }
 
@@ -615,6 +671,7 @@ test_cross_branch_attribution_via_list
 test_cross_branch_attribution_unquoted_run_list
 test_other_branch_run_ignored
 test_no_run_busy_pane
+test_no_run_herdr_unknown_uses_backend_capture
 test_no_run_idle_pane_uses_log
 test_dead_window_ignores_stale_status_log
 test_dead_window_still_reports_terminal_run_step

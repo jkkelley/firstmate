@@ -4,14 +4,15 @@
 # and keeps blocking; it queues and exits only for actionable wakes. The no-verb
 # turn-end / non-terminal-stale path is absorb-only-when-provably-working: a wake
 # is absorbed only when the crew shows POSITIVE evidence it is still working (an
-# actively-running no-mistakes step, or a busy pane), and surfaced otherwise, so a
-# crew that finishes (or stops and waits) without a captain-relevant status is
-# never silently swallowed. While state/.afk exists, the daemon owns triage and
+# actively-running no-mistakes step, or a backend busy signal), and surfaced
+# otherwise, so a crew that finishes (or stops and waits) without a
+# captain-relevant status is never silently swallowed. While state/.afk exists,
+# the daemon owns triage and
 # this watcher queues and exits on every wake. Printed reason lines:
 #   signal: <file>...      status/turn-end signals, surfaced when a listed status
 #                          has a captain-relevant verb OR a no-verb signal's crew
 #                          is not provably working, unless afk is active
-#   stale: <window>        terminal stale pane, a non-terminal stale whose crew is
+#   stale: <window>        terminal stale endpoint, a non-terminal stale whose crew is
 #                          not provably working (surfaced at once), or a provably-
 #                          working stale past the wedge threshold, unless afk active
 #   check: <script>: <out> per-task check output, always actionable
@@ -36,6 +37,15 @@ mkdir -p "$STATE"
 # has one definition.
 # shellcheck source=bin/fm-classify-lib.sh
 . "$SCRIPT_DIR/fm-classify-lib.sh"
+# The DEFAULT EVENT SOURCE: this watcher's poll loop over the pull primitives
+# (capture, recorded windows, backend busy-state, and the BUSY_REGEX fallback)
+# synthesizes the signal/stale/check/heartbeat wake vocabulary for backends with
+# no native event push. tmux always reports unknown busy-state, preserving the
+# original regex path. herdr contributes native semantic busy-state through the
+# same poll loop until a future push subscription replaces this default source;
+# see bin/fm-backend.sh and docs/herdr-backend.md.
+# shellcheck source=bin/fm-backend.sh
+. "$SCRIPT_DIR/fm-backend.sh"
 
 WATCH_LOCK="$STATE/.watch.lock"
 WATCH_PATH="$SCRIPT_DIR/fm-watch.sh"
@@ -92,8 +102,11 @@ SIGNAL_GRACE=${FM_SIGNAL_GRACE:-30}   # seconds to linger after a signal so trai
                                       # signals (a status write, then the same turn's
                                       # turn-end hook) coalesce into one wake
 # Busy signatures per harness, OR-ed. Extend via env when new adapters are verified.
-# claude/codex: "esc to interrupt"; opencode: "esc interrupt"; pi: "Working..."
-BUSY_REGEX=${FM_BUSY_REGEX:-'esc (to )?interrupt|Working\.\.\.'}
+# claude/codex: "esc to interrupt"; opencode: "esc interrupt"; pi: "Working...";
+# grok: "Ctrl+c:cancel" (the mid-turn cancel hint in grok's keybind bar, shown iff a
+# turn is running; absent when idle - verified grok 0.2.73, ASCII to avoid the
+# locale fragility of matching grok's braille spinner glyph directly).
+BUSY_REGEX=${FM_BUSY_REGEX:-'esc (to )?interrupt|Working\.\.\.|Ctrl\+c:cancel'}
 # Always-on wake triage: most wakes during a long crew validation are benign (a
 # working: note or turn-end while a pipeline runs, a no-change heartbeat). Rather
 # than wake firstmate's LLM for each, this watcher classifies every wake in bash
@@ -140,6 +153,26 @@ hash_pane() {
   if command -v md5 >/dev/null 2>&1; then md5 -q; else md5sum | cut -d' ' -f1; fi
 }
 
+# window_is_busy: 0 (busy) iff the task's harness is actively working. Prefers
+# a backend's native semantic busy state (fm_backend_busy_state - herdr's
+# agent.get; herdr-addendum "busy state" row, "the first backend where
+# fm_session_busy_state gets real semantics"); falls back to the existing
+# pane-tail regex ONLY when the backend reports unknown (tmux always does, so
+# its path is unchanged byte-for-byte). <tail40> is the same bounded capture
+# already read for hashing, so this adds no extra backend calls on the
+# regex-fallback path.
+window_is_busy() {  # <window> <tail40>
+  local w=$1 tail40=$2 bs
+  bs=$(fm_backend_busy_state "$(window_backend "$w")" "$w" 2>/dev/null)
+  case "$bs" in
+    busy) return 0 ;;
+    idle) return 1 ;;
+    *)
+      printf '%s' "$tail40" | grep -v '^[[:space:]]*$' | tail -6 | grep -qiE "$BUSY_REGEX"
+      ;;
+  esac
+}
+
 window_kind() {
   local w=$1 meta mw kind
   for meta in "$STATE"/*.meta; do
@@ -152,6 +185,23 @@ window_kind() {
     return 0
   done
   echo unknown
+}
+
+# window_backend: the backend recorded in the meta whose window= matches <w>,
+# defaulting to tmux (absent backend= means tmux; the P1 compatibility
+# contract) when no matching meta carries the field, or none matches at all.
+window_backend() {
+  local w=$1 meta mw backend
+  for meta in "$STATE"/*.meta; do
+    [ -e "$meta" ] || continue
+    mw=$(grep '^window=' "$meta" | cut -d= -f2- || true)
+    [ "$mw" = "$w" ] || continue
+    backend=$(grep '^backend=' "$meta" | cut -d= -f2- || true)
+    [ -n "$backend" ] || backend=tmux
+    echo "$backend"
+    return 0
+  done
+  echo tmux
 }
 
 recorded_windows() {
@@ -376,7 +426,7 @@ EOF
     # A secondmate idling on its own watcher is healthy. Its parent supervises
     # it through status writes and heartbeats, not pane-idle staleness.
     [ "$(window_kind "$w")" = secondmate ] && continue
-    tail40=$(tmux capture-pane -p -t "$w" -S -40 2>/dev/null) || continue
+    tail40=$(fm_backend_capture "$(window_backend "$w")" "$w" 40 2>/dev/null) || continue
     h=$(printf '%s' "$tail40" | hash_pane)
     key=$(printf '%s' "$w" | tr ':/.' '___')
     hf="$STATE/.hash-$key"
@@ -387,10 +437,11 @@ EOF
     if [ "$h" = "$prev" ]; then
       n=$(( $(cat "$cf" 2>/dev/null || echo 0) + 1 ))
       echo "$n" > "$cf"
-      # Busy match runs on the last 6 non-blank lines only (the TUI footer area,
-      # where every verified harness renders its busy indicator) so busy-looking
-      # strings in displayed content cannot suppress stale detection.
-      if [ "$n" -ge 2 ] && ! printf '%s' "$tail40" | grep -v '^[[:space:]]*$' | tail -6 | grep -qiE "$BUSY_REGEX"; then
+      # Busy match: a backend's native semantic state when available (herdr),
+      # else the last 6 non-blank lines only (the TUI footer area, where every
+      # verified harness renders its busy indicator) so busy-looking strings
+      # in displayed content cannot suppress stale detection.
+      if [ "$n" -ge 2 ] && ! window_is_busy "$w" "$tail40"; then
         # The pane is idle/stale at hash $h. Triage decides whether this wakes
         # firstmate. Detection itself is unchanged from above.
         if afk_present; then
@@ -406,7 +457,7 @@ EOF
             fm_wake_append stale "$w" "stale: $w" || exit 1
             printf '%s' "$h" > "$sf"
             rm -f "$ssf"
-            mark_surfaced "$STATE/$(window_to_task "$w").status"
+            mark_surfaced "$STATE/$(window_to_task "$w" "$STATE").status"
             wake "stale: $w"
           fi
         else
@@ -422,7 +473,7 @@ EOF
           #     status, waiting on a decision, or wedged) instead of leaving the
           #     finish to wait out the timer.
           if [ "$(cat "$sf" 2>/dev/null || true)" != "$h" ]; then
-            if crew_is_provably_working "$(window_to_task "$w")"; then
+            if crew_is_provably_working "$(window_to_task "$w" "$STATE")"; then
               printf '%s' "$h" > "$sf"
               date +%s > "$ssf"
               triage_log "absorbed non-terminal stale (provably working): $w"
