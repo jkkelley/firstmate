@@ -19,6 +19,12 @@
 # need a live attached tmux client, which a background test script cannot
 # manufacture; the selection LOGIC for that case is already exercised for real
 # by fm_backend_detect's own unit coverage plus that fake-tmux fm-spawn test.
+#
+# Safety (2026-07-02 incident, see tests/herdr-test-safety.sh): cleanup uses
+# ONLY herdr_safe_stop_and_delete, never a bare/inline-prefixed `herdr server
+# stop` - that command killed the captain's live default herdr server twice in
+# production because HERDR_SESSION-based targeting (env var OR inline prefix)
+# is not reliably honored once another herdr server is already running.
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -36,27 +42,28 @@ command -v herdr >/dev/null 2>&1 || { echo "skip: herdr not found"; exit 0; }
 command -v jq >/dev/null 2>&1 || { echo "skip: jq not found (required by the herdr adapter)"; exit 0; }
 command -v treehouse >/dev/null 2>&1 || { echo "skip: treehouse not found (required by fm-spawn.sh)"; exit 0; }
 
-# Physically-resolved (mktemp -d "$(pwd -P)"-relative), not the logical
-# ${TMPDIR:-/tmp} path: on macOS /tmp is a symlink to /private/tmp, and
-# fm-spawn.sh's PROJ_ABS uses a logical `cd && pwd` while herdr's own
-# foreground_cwd reports the OS-resolved physical path. A project rooted on
-# the logical side of that symlink makes the very first worktree-discovery
-# poll see two different STRINGS for the same directory and trip the
-# isolation guard's false-refusal before treehouse ever moves the pane.
+# shellcheck source=tests/herdr-test-safety.sh
+. "$ROOT/tests/herdr-test-safety.sh"
+
+# TMP_ROOT is physically resolved (mktemp -d "$(pwd -P)"-relative) to keep this
+# real-herdr smoke fixture free of unrelated OS symlink noise.
+# The old fm-spawn bug that originally motivated this fixture shape was fixed in
+# fm-spawn-symlink-guard-s8: fm-spawn.sh now normalizes PROJ_ABS and observed
+# backend cwd reads before the worktree-discovery comparison.
+# The dedicated regression is
+# tests/fm-backend.test.sh:test_spawn_symlinked_project_prefix_avoids_false_refusal.
 TMP_ROOT=$(mktemp -d "$(cd "${TMPDIR:-/tmp}" && pwd -P)/fm-backend-autodetect-smoke.XXXXXX")
-SESSION="fm-autodetect-smoke-$$"
+SESSION="fm-lab-autodetect-smoke-$$"
 export HERDR_SESSION="$SESSION"
 ID="autodetectsmoke1"
 WT=
-trap cleanup_all EXIT
-
 cleanup_all() {
   [ -n "$WT" ] && command -v treehouse >/dev/null 2>&1 && treehouse return --force "$WT" >/dev/null 2>&1
-  HERDR_SESSION="$SESSION" herdr server stop >/dev/null 2>&1 || true
-  sleep 0.5
-  HERDR_SESSION="$SESSION" herdr session delete "$SESSION" --json >/dev/null 2>&1 || true
+  herdr_safe_stop_and_delete "$SESSION"
   rm -rf "$TMP_ROOT"
 }
+trap cleanup_all EXIT
+fm_herdr_lab_prepare "$SESSION" || fail "could not prepare isolated Herdr lab session"
 
 # --- scratch world: FM_HOME with NO backend config, one throwaway project ---
 
@@ -127,7 +134,7 @@ FM_ROOT_OVERRIDE="$ROOT" FM_STATE_OVERRIDE="$STATE" FM_DATA_OVERRIDE="$DATA" \
 status=$?
 [ "$status" -eq 0 ] || fail "fm-teardown.sh failed for the auto-detected herdr task"$'\n'"$(cat "$TEARDOWN_OUT")"
 [ -f "$META" ] && fail "fm-teardown.sh did not remove $META"
-if HERDR_SESSION="$SESSION" herdr pane get "$PANE" >/dev/null 2>&1; then
+if herdr pane get "$PANE" --session "$SESSION" >/dev/null 2>&1; then
   fail "fm-teardown.sh did not close the auto-detected herdr pane"
 fi
 WT=
