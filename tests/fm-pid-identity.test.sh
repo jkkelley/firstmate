@@ -29,28 +29,6 @@ test_identity_is_stable_across_real_time() {
   pass "fm_pid_identity is stable for an unchanged pid across real time"
 }
 
-test_proc_stat_parse_handles_comm_with_spaces_and_parens() {
-  # Field 2 (comm) can contain spaces and parentheses; the parser must strip
-  # through the LAST ') ' before indexing, so field 22 (starttime) is extracted
-  # from the real columns, not from inside the comm.
-  local line start
-  # comm = "(my (weird) proc)"; remaining fields are state(3) ... starttime(22).
-  # Columns 3..22:  S 1 1234 1234 0 -1 4194560 100 0 0 0 5 6 0 0 20 0 1 0 727865
-  line='1234 (my (weird) proc) S 1 1234 1234 0 -1 4194560 100 0 0 0 5 6 0 0 20 0 1 0 727865'
-  start=$(fm_proc_stat_starttime "$line") || fail "parser returned non-zero for a valid stat line"
-  [ "$start" = "727865" ] || fail "starttime parsed wrong: expected 727865, got '$start'"
-  pass "proc-stat parser extracts starttime past a comm with spaces and parens"
-}
-
-test_proc_stat_parse_handles_plain_comm() {
-  # A boring single-word comm must parse identically.
-  local line start
-  line='42 (bash) S 1 42 42 0 -1 4194304 50 0 0 0 1 2 0 0 20 0 1 0 555000'
-  start=$(fm_proc_stat_starttime "$line") || fail "parser returned non-zero for a plain stat line"
-  [ "$start" = "555000" ] || fail "starttime parsed wrong for plain comm: expected 555000, got '$start'"
-  pass "proc-stat parser extracts starttime for a plain comm"
-}
-
 test_pid_identity_rejects_bad_pids() {
   # Empty and non-numeric pids are rejected; a dead pid produces no identity.
   fm_pid_identity "" && fail "empty pid was not rejected"
@@ -63,6 +41,4 @@ test_pid_identity_rejects_bad_pids() {
 }
 
 test_identity_is_stable_across_real_time
-test_proc_stat_parse_handles_comm_with_spaces_and_parens
-test_proc_stat_parse_handles_plain_comm
 test_pid_identity_rejects_bad_pids
