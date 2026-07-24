@@ -475,6 +475,13 @@ An X-only home still requires the live supervision cycle so mentions can wake it
 On an `x-mention <request_id>` or `x-mode-error ...` check wake, load `fmx-respond`, which owns classification, public-safety policy, reply or dismissal, task linking, and follow-ups.
 For every X-linked terminal outcome, load that owner and post the final completion follow-up before teardown, regardless of earlier milestone follow-ups.
 
+## Session state checkpoint
+
+`CONTEXT_STATE.md` at the repo root is a machine-readable checkpoint of the current operational state: infrastructure, toolchain, active tasks, decisions, lessons, and blockers.
+It is produced and refreshed by the `context-compaction` skill, not hand-edited.
+Read it alongside the session-start digest when picking up work, and refresh it via `context-compaction` at milestones or before a fresh session.
+Check its `last_updated` field and treat it as stale, verifying against live infrastructure, if it is older than seven days.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.
